@@ -1,0 +1,15 @@
+services:
+  otp-app:
+    build: .
+    container_name: otp-security-project
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    
+    env_file:
+      - .env
+    
+    volumes:
+      - ./users.db:/app/users.db
+      - ./certs:/app/certs
+      - ./logs:/app/logs

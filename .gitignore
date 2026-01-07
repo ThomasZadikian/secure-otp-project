@@ -1,0 +1,19 @@
+# Dépendances (trop lourd)
+node_modules/
+
+# Secrets & Configuration (CRITIQUE)
+.env
+
+# Base de données (On ne versionne pas les données de prod/test)
+users.db
+users.db-journal
+
+# Certificats HTTPS (CRITIQUE : Ne jamais partager la clé privée)
+certs/
+
+# Logs (Inutile et peut contenir des infos sensibles)
+logs/
+npm-debug.log
+
+# Système
+.DS_Store

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SOTP security</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; padding-top: 50px; }
+        .container { background: #1e1e1e; padding: 2rem; border-radius: 8px; width: 400px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); border: 1px solid #333; }
+        h1 { font-size: 1.4rem; border-bottom: 2px solid #00c853; padding-bottom: 10px; margin-bottom: 20px; color: #00c853; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #2c2c2c; border: 1px solid #444; color: white; border-radius: 4px; font-size: 1rem; }
+        input:focus { outline: none; border-color: #00c853; }
+        button { width: 100%; padding: 12px; background: #00c853; color: black; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem; margin-top: 10px; transition: background 0.2s; }
+        button:hover { background: #00e676; }
+        .secondary { background: #424242; color: white; }
+        .secondary:hover { background: #616161; }
+        .error { color: #ff5252; font-size: 0.9rem; margin-top: 10px; text-align: center; }
+        
+        .otp-tabs { display: flex; margin-bottom: 15px; border-bottom: 1px solid #444; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; color: #888; background: #252525; }
+        .tab.active { color: #00c853; border-bottom: 2px solid #00c853; background: #1e1e1e; font-weight: bold; }
+        
+        .backup-list { font-family: monospace; background: #000; padding: 15px; border: 1px solid #333; margin: 10px 0; color: #00e676; letter-spacing: 1px; }
+        .warning-box { background: rgba(255, 152, 0, 0.1); border-left: 4px solid #ff9800; padding: 10px; margin: 10px 0; font-size: 0.9rem; color: #ffcc80; }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    
+    <div v-if="view === 'guest'">
+        <h1>{{ isLoginMode ? 'Connexion' : 'Créer un compte' }}</h1>
+        <input v-model="form.email" placeholder="Email" type="email" autocomplete="username">
+        <input v-model="form.password" placeholder="Mot de passe" type="password" autocomplete="current-password">
+        
+        <button @click="submitAuth">{{ isLoginMode ? 'Se connecter' : "S'inscrire" }}</button>
+        <button class="secondary" @click="isLoginMode = !isLoginMode">
+            {{ isLoginMode ? "Pas de compte ? S'inscrire" : "J'ai déjà un compte" }}
+        </button>
+        <p class="error" v-if="error">{{ error }}</p>
+    </div>
+
+    <div v-if="view === 'partial'">
+        <h1>Double Authentification</h1>
+        
+        <div class="otp-tabs">
+            <div class="tab" :class="{ active: otpMethod === 'app' }" @click="otpMethod = 'app'">
+                Appli
+            </div>
+            <div class="tab" :class="{ active: otpMethod === 'backup' }" @click="otpMethod = 'backup'">
+                Secours
+            </div>
+        </div>
+
+        <div v-if="otpMethod === 'app'">
+            <p>Entrez le code à 6 chiffres de Google Authenticator.</p>
+            <input v-model="otpToken" placeholder="000 000" maxlength="6" inputmode="numeric" autocomplete="one-time-code" autofocus>
+        </div>
+
+        <div v-if="otpMethod === 'backup'">
+            <div class="warning-box">Ce code sera détruit après utilisation (Usage Unique).</div>
+            <p>Utilisez l'un de vos codes de secours.</p>
+            <input v-model="otpToken" placeholder="Code alphanumérique">
+        </div>
+
+        <button @click="verifyOtp">Valider</button>
+        <p class="error" v-if="error">{{ error }}</p>
+        <button class="secondary" @click="logout" style="margin-top:20px">Annuler</button>
+    </div>
+
+    <div v-if="view === 'authenticated'">
+        <h1>Profil</h1>
+        <p>Connecté en tant que : <strong>{{ userEmail }}</strong></p>
+        
+        <hr style="border-color:#333; margin: 20px 0;">
+
+        <div v-if="!is2faActive && !qrCodeUrl">
+            <h3>Sécurité Faible</h3>
+            <p>Protégez votre compte en activant la double authentification.</p>
+            <button @click="start2faSetup">Activer la protection A2F</button>
+        </div>
+
+        <div v-if="qrCodeUrl">
+            <h3>Configuration A2F</h3>
+            <p>1. Scannez ce QR Code avec Google Authenticator :</p>
+            <div style="text-align:center; background:white; padding:10px; border-radius:4px;">
+                <img :src="qrCodeUrl" alt="QR Code" style="width:150px">
+            </div>
+            <p style="font-size:0.8rem; text-align:center; color:#888;">Clé manuelle : {{ tempSecret }}</p>
+            
+            <p>2. Entrez le code généré pour confirmer :</p>
+            <input v-model="otpToken" placeholder="000 000" maxlength="6">
+            <button @click="confirm2fa">Activer maintenant</button>
+        </div>
+
+        <div v-if="backupCodes.length > 0">
+            <h3>A2F Activée !</h3>
+            <div class="warning-box">
+                <strong>IMPORTANT :</strong> Voici vos codes de secours à usage unique.
+                Notez-les en lieu sûr, ils ne s'afficheront plus jamais.
+            </div>
+            <div class="backup-list">
+                <div v-for="code in backupCodes" :key="code">{{ code }}</div>
+            </div>
+            <button class="secondary" @click="backupCodes = []">J'ai bien noté ces codes</button>
+        </div>
+
+        <div v-if="is2faActive && backupCodes.length === 0">
+            <h3 style="color:#00c853">Compte Sécurisé</h3>
+            <p>La double authentification est active.</p>
+        </div>
+
+        <button class="secondary" @click="logout" style="margin-top:30px">Se déconnecter</button>
+        <p class="error" v-if="error">{{ error }}</p>
+    </div>
+
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                view: 'loading',
+                isLoginMode: true,
+                form: { email: '', password: '' },
+                otpToken: '',
+                error: '',
+                userEmail: '',
+                is2faActive: false,
+                otpMethod: 'app',
+                qrCodeUrl: null,
+                tempSecret: '',
+                backupCodes: []
+            }
+        },
+        async mounted() {
+            await this.checkSession();
+        },
+        methods: {
+            async api(url, method = 'GET', body = null) {
+                this.error = '';
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const res = await fetch(url, options);
+                return await res.json();
+            },
+            async checkSession() {
+                const data = await this.api('/api/session');
+                this.view = data.status;
+                if(data.email) this.userEmail = data.email;
+                if(data.is2faActive !== undefined) this.is2faActive = data.is2faActive;
+            },
+            async submitAuth() {
+                const endpoint = this.isLoginMode ? '/api/login' : '/api/register';
+                const data = await this.api(endpoint, 'POST', this.form);
+                
+                if (data.success === false) {
+                    this.error = data.message;
+                } else {
+                    if (data.status === 'partial') {
+                        this.view = 'partial';
+                    } else {
+                        this.view = 'authenticated';
+                        this.checkSession();
+                    }
+                }
+            },
+            async verifyOtp() {
+                const data = await this.api('/api/verify-otp', 'POST', { 
+                    token: this.otpToken,
+                    type: this.otpMethod 
+                });
+                
+                if (data.success) {
+                    this.view = 'authenticated';
+                    this.otpToken = '';
+                    this.checkSession();
+                } else {
+                    this.error = data.message;
+                }
+            },
+            async start2faSetup() {
+                const data = await this.api('/api/setup-2fa');
+                this.qrCodeUrl = data.qrCode;
+                this.tempSecret = data.secret;
+            },
+            async confirm2fa() {
+                const data = await this.api('/api/confirm-2fa', 'POST', { token: this.otpToken });
+                if (data.success) {
+                    this.is2faActive = true;
+                    this.qrCodeUrl = null;
+                    this.backupCodes = data.backupCodes;
+                    this.otpToken = '';
+                } else {
+                    this.error = data.message;
+                }
+            },
+            async logout() {
+                await this.api('/api/logout', 'POST');
+                this.userEmail = '';
+                this.is2faActive = false;
+                this.otpToken = '';
+                this.backupCodes = [];
+                this.qrCodeUrl = null;
+                this.view = 'guest';
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
