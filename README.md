@@ -39,23 +39,22 @@ Copiez le fichier d'exemple et configurez vos secrets (optionnel pour le test) :
 
 cp .env.example .env
 
-3. Génération des certificats SSL (Obligatoire)
+### 3. Génération des certificats SSL (Obligatoire)
 Les clés privées ne sont pas versionnées par mesure de sécurité. Vous devez générer un certificat auto-signé localement :
 
 
 mkdir -p certs
 openssl req -nodes -new -x509 -keyout certs/server.key -out certs/server.cert -days 365 -subj "/CN=localhost"
 
-4. Lancement
-
+### 4. Lancement
 
 docker compose up --build
 L'application sera accessible sur : https://localhost:3000 (Acceptez l'avertissement de sécurité du navigateur dû au certificat auto-signé).
 
-🧪 Procédures de Test (PoC)
+## 🧪 Procédures de Test (PoC)
 Voici comment vérifier les mécanismes de sécurité implémentés :
 
-Scénario 1 : Activation A2F & Codes de Secours
+**Scénario 1** : Activation A2F & Codes de Secours
 Créez un compte et accédez au profil.
 
 Cliquez sur "Activer la protection A2F", scannez le QR Code.
@@ -68,21 +67,21 @@ Testez l'onglet "Secours" avec un code.
 
 Preuve : Essayez de réutiliser le même code. Il sera rejeté (Usage Unique).
 
-Scénario 2 : Verrouillage de Compte (Brute Force)
+**Scénario 2** : Verrouillage de Compte (Brute Force)
 Tentez de vous connecter avec un mauvais mot de passe 5 fois de suite.
 
 Résultat : Le compte est verrouillé pour 1 heure (locked_until en base).
 
 Vérifiez les logs dans logs/security.log pour voir l'alerte de sécurité.
 
-Scénario 3 : Injection SQL & XSS
+**Scénario 3** : Injection SQL & XSS
 Tentez une injection dans le champ email : ' OR '1'='1.
 
 Résultat : "Identifiants incorrects" (La requête préparée a neutralisé l'attaque).
 
 Vérifiez les Headers HTTP (F12 > Network). Vous verrez Content-Security-Policy et l'absence de X-Powered-By.
 
-📂 Structure du Projet
+## 📂 Structure du Projet
 .
 ├── .env.example       # Modèle de configuration (SANS secrets)
 ├── Dockerfile         # Construction de l'image Alpine sécurisée
@@ -93,7 +92,7 @@ Vérifiez les Headers HTTP (F12 > Network). Vous verrez Content-Security-Policy 
 ├── logs/              # Dossier d'audit (Non versionné, monté via Docker)
 └── public/            # Frontend (Vue.js via CDN + HTML Hardening)
 
-🛠️ Stack Technique
+## 🛠️ Stack Technique
 Runtime : Node.js 20 (Alpine)
 
 Backend : Express.js
