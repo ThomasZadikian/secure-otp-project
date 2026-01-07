@@ -40,16 +40,11 @@ Copiez le fichier d'exemple et configurez vos secrets (optionnel pour le test) :
 cp .env.example .env
 
 ### 3. Génération des certificats SSL (Obligatoire)
-Les clés privées ne sont pas versionnées par mesure de sécurité. Vous devez générer un certificat auto-signé localement :
-
-
-mkdir -p certs
-openssl req -nodes -new -x509 -keyout certs/server.key -out certs/server.cert -days 365 -subj "/CN=localhost"
+L'infrastructure PKI (HTTPS) est désormais automatisée. Le conteneur génère ses propres certificats au premier démarrage s'ils sont absents.
 
 ### 4. Lancement
-
-docker compose up --build
-L'application sera accessible sur : https://localhost:3000 (Acceptez l'avertissement de sécurité du navigateur dû au certificat auto-signé).
+docker compose up -d --build
+L'application sera prête sur https://localhost:3000 dès la fin du build.
 
 ## 🧪 Procédures de Test (PoC)
 Voici comment vérifier les mécanismes de sécurité implémentés :
@@ -94,6 +89,8 @@ Vérifiez les Headers HTTP (F12 > Network). Vous verrez Content-Security-Policy 
 ├── users.db           # Base de données (Persistée via Volume Docker)
 
 ├── certs/             # Dossier des certificats (Non versionné)
+
+├── data/              # Sossier persistant (Base de données SQLite)
 
 ├── logs/              # Dossier d'audit (Non versionné, monté via Docker)
 

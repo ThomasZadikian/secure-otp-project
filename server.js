@@ -13,7 +13,7 @@ const rateLimit = require('express-rate-limit');
 const winston = require('winston');
 
 const app = express();
-const db = new Database('users.db');
+const db = new Database('./data/users.db');
 
 
 const logger = winston.createLogger({

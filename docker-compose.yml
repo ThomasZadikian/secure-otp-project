@@ -10,6 +10,6 @@ services:
       - .env
     
     volumes:
-      - ./users.db:/app/users.db
+      - ./data:/app/data
       - ./certs:/app/certs
       - ./logs:/app/logs
