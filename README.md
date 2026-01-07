@@ -84,13 +84,21 @@ Vérifiez les Headers HTTP (F12 > Network). Vous verrez Content-Security-Policy 
 ## 📂 Structure du Projet
 .
 ├── .env.example       # Modèle de configuration (SANS secrets)
+
 ├── Dockerfile         # Construction de l'image Alpine sécurisée
+
 ├── docker-compose.yml # Orchestration et montage des volumes
+
 ├── server.js          # Logique Backend (Express + Security Middleware)
+
 ├── users.db           # Base de données (Persistée via Volume Docker)
+
 ├── certs/             # Dossier des certificats (Non versionné)
+
 ├── logs/              # Dossier d'audit (Non versionné, monté via Docker)
+
 └── public/            # Frontend (Vue.js via CDN + HTML Hardening)
+
 
 ## 🛠️ Stack Technique
 Runtime : Node.js 20 (Alpine)
